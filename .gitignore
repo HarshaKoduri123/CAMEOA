@@ -1,0 +1,29 @@
+# --- Python Generated Files ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+ENV/
+
+# --- Data and Datasets ---
+# Ignore large datasets and local data storage
+dataset/
+datasets/
+*.csv
+*.json
+*.xlsx
+*.h5
+*.pkl
+*.npy
+
+# --- Checkpoints and Results ---
+# Jupyter Notebooks checkpoints and ML model checkpoints
+.ipynb_checkpoints/
+checkpoints/
+results/
+outputs/
+models/
+
+# --- IDE/Environment specific ---
+.vscode/
+.idea/
