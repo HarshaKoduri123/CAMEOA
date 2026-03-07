@@ -20,7 +20,7 @@ datasets/
 # Jupyter Notebooks checkpoints and ML model checkpoints
 .ipynb_checkpoints/
 checkpoints/
-results/
+evaluation_results/
 outputs/
 models/
 

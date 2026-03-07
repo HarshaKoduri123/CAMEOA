@@ -27,7 +27,6 @@ from utils import (
 
 warnings.filterwarnings("ignore")
 
-
 class EmotionEvaluator:
 
     def __init__(self, model: ShaSpecEAUModel, cfg: Config, device: torch.device):
