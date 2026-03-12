@@ -37,13 +37,7 @@ class Sample:
 
 
 class IEMOCAPUtteranceDataset(Dataset):
-    """
-    Strategy:
-      - audio loaded per utterance (padded to cfg.max_audio_seconds)
-      - text loaded as string
-      - video uses precomputed utterance embedding: {data_root}/assets/video_embeds/{utt_id}.pt
-      - mocap loads 3 streams; collate pads/aligns
-    """
+
 
     def __init__(self, manifest_path: Path, data_root: Path, cfg, split: str):
         self.df = pd.read_csv(manifest_path)
@@ -70,8 +64,7 @@ class IEMOCAPUtteranceDataset(Dataset):
         self.audio_sr = int(getattr(cfg, "audio_sr", 16000))
         self.max_audio_seconds = float(getattr(cfg, "max_audio_seconds", 8.0))
         self.max_audio_len = int(self.audio_sr * self.max_audio_seconds)
-        print(f"[{split}] total after filter:", len(self.df))
-        print(self.df["label"].value_counts())
+
 
 
     def __len__(self):
@@ -82,9 +75,7 @@ class IEMOCAPUtteranceDataset(Dataset):
             return None
         return self.data_root / rel
 
-    # -----------------------------
-    # AUDIO
-    # -----------------------------
+
     def _load_audio(self, path: Path) -> torch.Tensor:
         wav, sr = sf.read(str(path), dtype="float32", always_2d=False)
         if wav.ndim == 2:
@@ -100,15 +91,11 @@ class IEMOCAPUtteranceDataset(Dataset):
             wav = F.pad(wav, (0, self.max_audio_len - wav.numel()))
         return wav.contiguous()
 
-    # -----------------------------
-    # TEXT
-    # -----------------------------
+
     def _load_text(self, path: Path) -> str:
         return path.read_text(encoding="utf-8", errors="ignore").strip()
 
-    # -----------------------------
-    # MOCAP STREAM FILE
-    # -----------------------------
+
     def _load_mocap_file(self, path: Path) -> torch.Tensor:
         lines = path.read_text(encoding="utf-8", errors="ignore").splitlines()
         if len(lines) < 4:
@@ -139,7 +126,6 @@ class IEMOCAPUtteranceDataset(Dataset):
 
         arr = torch.tensor(data_rows, dtype=torch.float32)
 
-        # drop Frame# and Time
         if arr.size(1) >= 3:
             arr = arr[:, 2:]
         elif arr.size(1) >= 2:
@@ -147,13 +133,12 @@ class IEMOCAPUtteranceDataset(Dataset):
         else:
             return torch.zeros((arr.size(0), self.mocap_file_dim), dtype=torch.float32)
 
-        # downsample time to mocap_max_len
+ 
         T = arr.size(0)
         if T > self.mocap_max_len:
             idx = torch.linspace(0, T - 1, self.mocap_max_len).long()
             arr = arr[idx]
 
-        # pad/crop feature dim
         if arr.size(1) < self.mocap_file_dim:
             arr = F.pad(arr, (0, self.mocap_file_dim - arr.size(1), 0, 0))
         elif arr.size(1) > self.mocap_file_dim:
@@ -161,9 +146,6 @@ class IEMOCAPUtteranceDataset(Dataset):
 
         return arr.contiguous()
 
-    # -----------------------------
-    # VIDEO EMBED (Option A)
-    # -----------------------------
     def _load_video_embed(self, utt_id: str) -> Optional[torch.Tensor]:
         p = self.video_embed_dir / f"{utt_id}.pt"
         if not p.exists():
@@ -173,13 +155,10 @@ class IEMOCAPUtteranceDataset(Dataset):
             raise RuntimeError(f"Video embedding is not a tensor: {p}")
         return emb.float().view(-1).contiguous()
 
-    # -----------------------------
-    # GET ITEM
-    # -----------------------------
     def __getitem__(self, idx: int) -> Dict[str, Any]:
         r = self.df.iloc[idx]
 
-        label = str(r["label"]).strip().lower()  # already merged exc->hap
+        label = str(r["label"]).strip().lower() 
 
         sample = Sample(
             utt_id=str(r["utt_id"]),
@@ -253,9 +232,7 @@ class IEMOCAPUtteranceDataset(Dataset):
         return item
 
 
-# ============================================================
-# COLLATE
-# ============================================================
+
 def collate_fn(batch: List[Dict[str, Any]], cfg=None) -> Dict[str, Any]:
     assert cfg is not None, "cfg must be provided"
     out: Dict[str, Any] = {}
@@ -264,13 +241,12 @@ def collate_fn(batch: List[Dict[str, Any]], cfg=None) -> Dict[str, Any]:
     out["utt_id"] = [b["utt_id"] for b in batch]
     out["label"] = [b["label"] for b in batch]
 
-    # flags
+
     out["has_audio"] = torch.tensor([int(b.get("has_audio", 0)) for b in batch], dtype=torch.long)
     out["has_text"]  = torch.tensor([int(b.get("has_text", 0)) for b in batch], dtype=torch.long)
     out["has_video"] = torch.tensor([int(b.get("has_video", 0)) for b in batch], dtype=torch.long)
     out["has_mocap"] = torch.tensor([int(b.get("has_mocap", 0)) for b in batch], dtype=torch.long)
 
-    # audio
     max_audio_len = int(getattr(cfg, "audio_sr", 16000) * float(getattr(cfg, "max_audio_seconds", 8.0)))
     aud = []
     for b in batch:
